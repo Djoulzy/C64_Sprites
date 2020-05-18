@@ -10,6 +10,15 @@
 .segment "SPRITE"
 .incbin "res/Uridium.spd", 3
 
+sprite1:
+.byte $0A, $03	; X Coord (LO/HI)
+.byte $64		; Y Coord
+.byte $00, $0F	; Current frame / Nb frames
+.byte $00		; Priority ($00 priority sprite / $FF prority background)
+.byte $00, $04	; Current delay count / Animation delay
+.byte Red		; Uniq color (foreground)
+.byte sprites_data_loc / $40 ; frameset location VIC (Adresse du bank / 64)
+
 ;===============================================================================
 .segment "CODE"
 	jmp start						; run the init code then flow into the update code
@@ -45,7 +54,9 @@ color2:
 .byte $01,$01,$01,$01,$01 
 .byte $01,$01,$01,$07,$07 
 .byte $0f,$0f,$0a,$0a,$08 
-.byte $08,$02,$02,$09,$09 
+.byte $08,$02,$02,$09,$09
+
+sprites_data_loc	=	$2000
 
 ;============================================================
 ; MAIN
@@ -64,7 +75,7 @@ colwash:
 		bne @cycle1      ; repeat if there are iterations left
 		sta color+$27   ; otherwise store te last color from accu into color table
 		sta $d990       ; ... and into Color Ram
-                          
+
 colwash2:
 	ldx #$00        ; load x-register with #$00
 	lda color2+$27  ; load the last color from the second color table
@@ -144,8 +155,6 @@ start:
 ;============================================================
 
 irq:
-	lda #sprite_frames_ship
-	sta sprite_ship_current_frame
 	dec $d019        ; acknowledge IRQ
 	jsr colwash      ; jump to color cycling routine
 	jsr spriteAnim
