@@ -11,7 +11,7 @@
 .incbin "res/Uridium.spd", 3
 
 sprite1:
-.byte $0A, $03	; X Coord (LO/HI)
+.byte $05, $FF	; X Coord (LO/HI)
 .byte $64		; Y Coord
 .byte $00, $0F	; Current frame / Nb frames
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
@@ -28,6 +28,7 @@ sprite1:
 ; Code Includes
 .include "libText.asm"
 .include "libSprite.asm"
+.include "libKeyboard.asm"
 
 ;=============================================================================== 
 
@@ -157,7 +158,39 @@ start:
 irq:
 	dec $d019        ; acknowledge IRQ
 	jsr colwash      ; jump to color cycling routine
+	jsr check_controls
 	jsr spriteAnim
 	jmp $ea81        ; return to kernel interrupt routine
 
 ;===============================================================================
+
+check_controls:
+	LIBKBD_INIT
+	LIBKBD_CHECK_KEY U_KEY_ROW, U_KEY_COL
+	bne :+
+	LIBSPRITE_UP 0, sprite1
+:
+	LIBKBD_CHECK_KEY N_KEY_ROW, N_KEY_COL
+	bne :+
+	LIBSPRITE_DOWN 0, sprite1
+:
+	LIBKBD_CHECK_KEY J_KEY_ROW, J_KEY_COL
+	bne :+
+	LIBSPRITE_RIGHT 0, sprite1
+:
+	LIBKBD_CHECK_KEY H_KEY_ROW, H_KEY_COL
+	bne :+
+	LIBSPRITE_LEFT 0, sprite1
+:
+	LIBKBD_CHECK_KEY X_KEY_ROW, X_KEY_COL
+	beq stop
+	rts
+
+;===============================================================================
+
+stop:
+	LIBTEXT_CLEARSCREEN_V Blue
+	lda #$00
+	sta $d015        ; turn off all sprites
+	jmp $ea81        ; jmp to regular interrupt routine
+	rts

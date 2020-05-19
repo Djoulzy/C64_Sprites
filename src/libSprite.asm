@@ -14,6 +14,8 @@ sprite_multicolor_1			= MediumGray
 sprite_multicolor_2			= White
 ; sprite_ship_color			= Red
 
+;===============================================================================
+
 .macro LIBSPRITE_SETSHAREDCOLORS bgColor, mColor1, mColor2
 	lda #bgColor 
 	sta $d021
@@ -56,15 +58,50 @@ sprite_multicolor_2			= White
 
 .macro LIBSPRITE_SETPOS sprite_num, sprite_addr
 	lda sprite_addr+1
-	and #$01 << sprite_num
-	ora $d010					; set X-Coord high bit (9th Bit)
-	sta $d010
+	bne :+						; Si != 0 on jump
+	lda #$01 << sprite_num
+	clc
+	eor #$FF
+	and $d010
+	jmp :++
 
+:	lda #$01 << sprite_num
+	ora $d010					
+
+:	sta $d010					; set X-Coord high bit (9th Bit)
 	lda sprite_addr				; set Sprite#0 positions with X/Y coords to
 	sta $d000+(sprite_num<<1)   ; bottom border of screen on the outer right
 	lda sprite_addr+2			; $d000 corresponds to X-Coord
 	sta $d001+(sprite_num<<1)   ; $d001 corresponds to Y-Coord
 .endmacro
+
+.macro LIBSPRITE_UP sprite_num, sprite_addr
+	dec sprite_addr+2
+	LIBSPRITE_SETPOS sprite_num, sprite_addr
+.endmacro
+
+.macro LIBSPRITE_DOWN sprite_num, sprite_addr
+	inc sprite_addr+2
+	LIBSPRITE_SETPOS sprite_num, sprite_addr
+.endmacro
+
+.macro LIBSPRITE_RIGHT sprite_num, sprite_addr
+	inc sprite_addr
+	bne :+
+	lda #$01
+	sta sprite_addr+1
+:	LIBSPRITE_SETPOS sprite_num, sprite_addr
+.endmacro
+
+.macro LIBSPRITE_LEFT sprite_num, sprite_addr
+	dec sprite_addr
+	bne :+
+	lda #$00
+	sta sprite_addr+1
+:	LIBSPRITE_SETPOS sprite_num, sprite_addr
+.endmacro
+
+;===============================================================================
 
 init_sprite:
 	; lda #sprite_frames_ship
@@ -86,6 +123,8 @@ init_sprite:
 
 	rts
 
+;===============================================================================
+
 spriteAnim:
 	lda sprite1+6
 	bne @end			; Si delay count != 0 on jump en @end
@@ -104,3 +143,7 @@ spriteAnim:
 @end:
 	dec sprite1+6
 	rts
+
+;===============================================================================
+
+go_up:
