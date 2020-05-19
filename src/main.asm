@@ -8,21 +8,36 @@
 
 ;===============================================================================
 ; Music include
-; .segment "MUSIC"
-; .incbin "res/empty_1000.sid", $7c+2
+.segment "MUSIC"
+; .byte $00
+.incbin "res/empty_1000.sid", 126
+
+sid_init = $11ED      ; init routine for music
+sid_play = $1004      ; play music routine
 
 ;===============================================================================
 ; Sprite include
 .segment "SPRITE"
-.incbin "res/Uridium.spd", 3
+.incbin "res/up_right.spd", 3
+.incbin "res/up_left.spd", 3
+.incbin "res/down_right.spd", 3
+.incbin "res/down_left.spd", 3
 
 sprite1:
 .byte $05, $FF	; X Coord (LO/HI)
 .byte $64		; Y Coord
-.byte $00, $0F	; Current frame / Nb frames
+.byte $00, $05	; Current frame / Nb frames
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
 .byte $00, $04	; Current delay count / Animation delay
 .byte Red		; Uniq color (foreground)
+.byte <up_right, >up_right ; Adresse de l'annimation
+
+up_right:
+.byte $00		; anim runnning
+.byte $02, $0F	; Current frame / Nb frames
+.byte $00		; Type d'anim: normal/ping-pong
+.byte $00		; sens
+.byte $00		; boucle
 .byte sprites_data_loc / $40 ; frameset location VIC (Adresse du bank / 64)
 
 ;===============================================================================
@@ -131,6 +146,7 @@ start:
 	stx SCREEN_COL
 	LIBTEXT_CLEARSCREEN_V $00     ; clear the screen
 	LIBKBD_INIT
+	jsr sid_init
 	jsr init_text       ; write lines of text
 	jsr init_sprite
 
@@ -167,6 +183,7 @@ irq:
 	jsr colwash      ; jump to color cycling routine
 	jsr check_controls
 	jsr spriteAnim
+	jsr sid_play
 	jmp $ea81        ; return to kernel interrupt routine
 
 ;===============================================================================

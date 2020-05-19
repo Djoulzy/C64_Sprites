@@ -3,6 +3,8 @@
 ;============================
 
 SPRITE_FRAME_VECTOR			= SCREEN_RAM + $3f8
+; $FB-$FE (always)
+ANIM_VECTOR					= $FB
 
 ; ship						= $2000			; Debut de la listes de frames vue par le 6502 (Bank 3 / Default)
 ; sprite_ship_current_frame	= $fb
@@ -50,9 +52,15 @@ sprite_multicolor_2			= White
 .endmacro
 
 .macro LIBSPRITE_SETFRAME sprite_num, sprite_addr
+	lda sprite_addr+9
+	sta ANIM_VECTOR
+	lda sprite_addr+10
+	sta ANIM_VECTOR+1
 	clc
-	lda sprite_addr+9	; Debut de la serie de frame
-	adc sprite_addr+3	; Ajoute le num de la frame actuelle
+	ldy #$06
+	lda (ANIM_VECTOR),Y
+	ldy #$01
+	adc (ANIM_VECTOR),Y
 	sta SPRITE_FRAME_VECTOR+sprite_num
 .endmacro
 
@@ -126,22 +134,24 @@ init_sprite:
 ;===============================================================================
 
 spriteAnim:
-	lda sprite1+6
-	bne @end			; Si delay count != 0 on jump en @end
-	lda sprite1+7		; On repositionne le compteur
-	sta sprite1+6		; avec le Animation delay 
+; 	lda sprite1+6
+; 	bne @end			; Si delay count != 0 on jump en @end
+; 	lda sprite1+7		; On repositionne le compteur
+; 	sta sprite1+6		; avec le Animation delay 
 
-	LIBSPRITE_SETFRAME 0, sprite1 ; Affiche la frame actuelle
-	lda sprite1+3		; on regarde si la current frame est à 0
-	bne @decr			; si non on va en @dec
-	lda sprite1+4		; si oui, on place Nb Frame dans la current frame
-	sta sprite1+3
-	jmp @end
+; 	LIBSPRITE_SETFRAME 0, sprite1 ; Affiche la frame actuelle
+; 	lda sprite1+3		; on regarde si la current frame est à 0
+; 	bne @decr			; si non on va en @dec
+; 	lda sprite1+4		; si oui, on place Nb Frame dans la current frame
+; 	sta sprite1+3
+; 	jmp @end
 
-@decr:
-	dec sprite1+3
-@end:
-	dec sprite1+6
+; @decr:
+; 	dec sprite1+3
+; @end:
+; 	dec sprite1+6
+
+	LIBSPRITE_SETFRAME 0, sprite1;
 	rts
 
 ;===============================================================================
