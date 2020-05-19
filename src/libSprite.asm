@@ -133,12 +133,12 @@ spriteAnim:
 
 	LIBSPRITE_SETFRAME 0, sprite1 ; Affiche la frame actuelle
 	lda sprite1+3		; on regarde si la current frame est à 0
-	bne @dec			; si non on va en @dec
+	bne @decr			; si non on va en @dec
 	lda sprite1+4		; si oui, on place Nb Frame dans la current frame
 	sta sprite1+3
 	jmp @end
 
-@dec:
+@decr:
 	dec sprite1+3
 @end:
 	dec sprite1+6

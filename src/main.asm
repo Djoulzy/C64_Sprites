@@ -5,8 +5,14 @@
 ; $A3-$B1 (only if no RS-232 and datasette is used)
 ; $F7-$FA (only if no RS-232 is used)
 ; $FB-$FE (always)
+
 ;===============================================================================
-; Data include
+; Music include
+; .segment "MUSIC"
+; .incbin "res/empty_1000.sid", $7c+2
+
+;===============================================================================
+; Sprite include
 .segment "SPRITE"
 .incbin "res/Uridium.spd", 3
 
@@ -124,6 +130,7 @@ start:
 	stx	BORDER_COL
 	stx SCREEN_COL
 	LIBTEXT_CLEARSCREEN_V $00     ; clear the screen
+	LIBKBD_INIT
 	jsr init_text       ; write lines of text
 	jsr init_sprite
 
@@ -165,24 +172,25 @@ irq:
 ;===============================================================================
 
 check_controls:
-	LIBKBD_INIT
+.scope
 	LIBKBD_CHECK_KEY U_KEY_ROW, U_KEY_COL
-	bne :+
+	bne key_down
 	LIBSPRITE_UP 0, sprite1
-:
+key_down:
 	LIBKBD_CHECK_KEY N_KEY_ROW, N_KEY_COL
-	bne :+
+	bne key_right
 	LIBSPRITE_DOWN 0, sprite1
-:
+key_right:
 	LIBKBD_CHECK_KEY J_KEY_ROW, J_KEY_COL
-	bne :+
+	bne key_left
 	LIBSPRITE_RIGHT 0, sprite1
-:
+key_left:
 	LIBKBD_CHECK_KEY H_KEY_ROW, H_KEY_COL
-	bne :+
+	bne key_exit
 	LIBSPRITE_LEFT 0, sprite1
-:
+key_exit:
 	LIBKBD_CHECK_KEY X_KEY_ROW, X_KEY_COL
+.endscope
 	beq stop
 	rts
 
