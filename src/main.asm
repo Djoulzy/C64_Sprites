@@ -18,26 +18,50 @@ sid_play = $1004      ; play music routine
 ;===============================================================================
 ; Sprite include
 .segment "SPRITE"
-.incbin "res/up_right.spd", 3
+.incbin "res/up_right.spd", 3		; 320 bytes
 .incbin "res/up_left.spd", 3
 .incbin "res/down_right.spd", 3
 .incbin "res/down_left.spd", 3
 
-sprite1:
+sprite1:		; 8 bytes
 .byte $05, $FF	; X Coord (LO/HI)
 .byte $64		; Y Coord
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
 .byte Red		; Uniq color (foreground)
-.byte <up_right, >up_right ; Adresse de l'annimation
+.byte $00		; anim runnning
+.byte <up_left, >up_left ; Adresse de l'annimation
 
-up_right:
-.byte $01		; anim runnning
-.byte $04, $04	; Current frame / Last frame
+up_right:		; 8 bytes
+.byte $00, $04	; Current frame / Last frame
 .byte $00, $0F	; Current delay count / Animation delay
-.byte $01		; Type d'anim: normal/ping-pong
-.byte $00		; sens $00 = normal / $01 = reverse
+.byte $00		; Type d'anim: normal/ping-pong
+.byte $01		; sens $00 = normal / $01 = reverse
 .byte $00		; boucle
-.byte sprites_data_loc / $40 ; frameset location VIC (Adresse du bank / 64)
+.byte $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
+
+up_left:		; 8 bytes
+.byte $00, $04	; Current frame / Last frame
+.byte $00, $0F	; Current delay count / Animation delay
+.byte $00		; Type d'anim: normal/ping-pong
+.byte $01		; sens $00 = normal / $01 = reverse
+.byte $00		; boucle
+.byte ($2000 + 320) / $40 ; frameset location VIC (Adresse du bank / 64)
+
+down_right:		; 8 bytes
+.byte $00, $04	; Current frame / Last frame
+.byte $00, $0F	; Current delay count / Animation delay
+.byte $00		; Type d'anim: normal/ping-pong
+.byte $01		; sens $00 = normal / $01 = reverse
+.byte $00		; boucleh
+.byte ($2000 + 640) / $40 ; frameset location VIC (Adresse du bank / 64)
+
+down_left:		; 8 bytes
+.byte $00, $04	; Current frame / Last frame
+.byte $00, $0F	; Current delay count / Animation delay
+.byte $00		; Type d'anim: normal/ping-pong
+.byte $01		; sens $00 = normal / $01 = reverse
+.byte $00		; boucle
+.byte ($2000 + 960) / $40 ; frameset location VIC (Adresse du bank / 64)
 
 ;===============================================================================
 .segment "CODE"
@@ -77,8 +101,6 @@ color2:
 .byte $01,$01,$01,$07,$07 
 .byte $0f,$0f,$0a,$0a,$08 
 .byte $08,$02,$02,$09,$09
-
-sprites_data_loc	=	$2000
 
 ;============================================================
 ; MAIN
@@ -192,10 +214,12 @@ check_controls:
 .scope
 	LIBKBD_CHECK_KEY U_KEY_ROW, U_KEY_COL
 	bne key_down
+	LIBSPRITE_START_ANIM sprite1, up_left
 	LIBSPRITE_UP 0, sprite1
 key_down:
 	LIBKBD_CHECK_KEY N_KEY_ROW, N_KEY_COL
 	bne key_right
+	LIBSPRITE_START_ANIM sprite1, down_left
 	LIBSPRITE_DOWN 0, sprite1
 key_right:
 	LIBKBD_CHECK_KEY J_KEY_ROW, J_KEY_COL

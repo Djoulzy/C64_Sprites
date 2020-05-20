@@ -35,9 +35,9 @@ sprite_multicolor_2			= White
 .endmacro
 
 .macro LIBSPRITE_SETVECTOR sprite_num, sprite_addr
-	lda sprite_addr+5
-	sta ANIM_VECTOR
 	lda sprite_addr+6
+	sta ANIM_VECTOR
+	lda sprite_addr+7
 	sta ANIM_VECTOR+1
 .endmacro
 
@@ -86,6 +86,15 @@ sprite_multicolor_2			= White
 	sta $d000+(sprite_num<<1)   ; bottom border of screen on the outer right
 	lda sprite_addr+2			; $d000 corresponds to X-Coord
 	sta $d001+(sprite_num<<1)   ; $d001 corresponds to Y-Coord
+.endmacro
+
+.macro LIBSPRITE_START_ANIM sprite_addr, anim
+	lda <anim
+	sta sprite_addr+6
+	lda >anim
+	sta sprite_addr+7
+	lda #$01
+	sta sprite_addr+5
 .endmacro
 
 .macro LIBSPRITE_UP sprite_num, sprite_addr
@@ -158,8 +167,7 @@ spriteAnim:
 ; 	dec sprite1+6
 	LIBSPRITE_SETVECTOR 0, sprite1
 
-	ldy #$00
-	lda (ANIM_VECTOR),Y
+	lda sprite1
 	jeq @end_of_anim		; si animation not running on sort
 
 	ldy #$03			; check delay
@@ -190,8 +198,7 @@ spriteAnim:
 	lda (ANIM_VECTOR),Y
 	bne @boucle_norm	; si oui, on redemarre l'anim
 	lda #$00
-	ldy #$00
-	sta (ANIM_VECTOR),Y	; on stoppe l'anim
+	sta sprite1			; on stoppe l'anim
 	jmp @end_of_anim
 
 @boucle_norm:
@@ -236,8 +243,7 @@ spriteAnim:
 	lda (ANIM_VECTOR),Y
 	bne @boucle_rev		; si oui, on redemarre l'anim
 	lda #$00
-	ldy #$00
-	sta (ANIM_VECTOR),Y	; on stoppe l'anim
+	sta sprite1			; on stoppe l'anim
 	jmp @end_of_anim
 
 @boucle_rev:
