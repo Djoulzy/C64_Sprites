@@ -1,3 +1,5 @@
+.macpack        longbranch
+
 ;============================
 ; configuration of the sprite 
 ;============================
@@ -46,15 +48,15 @@ sprite_multicolor_2			= White
 	lda #01 << sprite_num		; set Multicolor mode for Sprite
 	ora $d01c
 	sta $d01c
-	lda sprite_addr+5
+	lda sprite_addr+3
 	and #$01 << sprite_num
 	ora $d01b					; Sprites have priority over background
 	sta $d01b
 
-	lda sprite_addr+4			; On initialise la frame actuelle
-	sta sprite_addr+3			; sur la derniere position
+	; lda sprite_addr+4			; On initialise la frame actuelle
+	; sta sprite_addr+3			; sur la derniere position
 
-	lda sprite_addr+8
+	lda sprite_addr+4			; On positione la couleur individuelle
 	sta $d027+sprite_num
 .endmacro
 
@@ -154,37 +156,103 @@ spriteAnim:
 ; 	dec sprite1+3
 ; @end:
 ; 	dec sprite1+6
-	lda sprite1+5
-	sta ANIM_VECTOR
-	lda sprite1+6
-	sta ANIM_VECTOR+1
+	LIBSPRITE_SETVECTOR 0, sprite1
 
 	ldy #$00
 	lda (ANIM_VECTOR),Y
-	beq @stop			; si animation not running on sort
+	jeq @end_of_anim		; si animation not running on sort
 
 	ldy #$03			; check delay
 	lda (ANIM_VECTOR),Y
-	bne @decrease_delay
+	jne @decrease_delay
 
 	LIBSPRITE_SETFRAME 0
-	ldy #$06
-	lda (ANIM_VECTOR),Y
-	bne @reverse
 	ldy #$04			; load anim delay
 	lda (ANIM_VECTOR),Y
 	ldy #$03
 	sta (ANIM_VECTOR),Y	; restart counter delay
-@reverse:
 
-@decrease_delay:
-	ldy #$03			; decrease delay
+	ldy #$06
 	lda (ANIM_VECTOR),Y
-	tax
-	dex
-	txa
+	bne @reverse
+;
+; Animation normale
+;
+	ldy #$01			; On charge la frame actuelle
+	lda (ANIM_VECTOR),Y	; on regarde si elle est à 0
+	bne @dec_frame		; sinon on va en dec_frame
+
+	ldy #$05			; mode ping-pong
+	lda (ANIM_VECTOR),Y
+	bne @pingpong1		; si oui on va en pingpong
+
+	ldy #$07			; Doit on boucler
+	lda (ANIM_VECTOR),Y
+	bne @boucle_norm	; si oui, on redemarre l'anim
+	lda #$00
+	ldy #$00
+	sta (ANIM_VECTOR),Y	; on stoppe l'anim
+	jmp @end_of_anim
+
+@boucle_norm:
+	ldy #$02
+	lda (ANIM_VECTOR),Y
+	ldy #$01
 	sta (ANIM_VECTOR),Y
-@stop:
+	jmp @end_of_anim
+
+@dec_frame:
+	LIBADDR_IND_DEC ANIM_VECTOR, $01
+	jmp @end_of_anim
+
+@pingpong1:
+	lda #$01
+	ldy #$06
+	sta (ANIM_VECTOR),Y	; on passe en mode reverse
+	jmp @inc_frame
+;
+; Animation inverse
+;
+@reverse:
+	ldy #$01			; On charge la frame actuelle
+	lda (ANIM_VECTOR),Y
+	ldy #$02
+	cmp (ANIM_VECTOR),Y ; on compare avec la last frame
+	bne @inc_frame		; si non egal on va incrementer la frame
+
+	ldy #$05			; mode ping-pong
+	lda (ANIM_VECTOR),Y
+	bne @pingpong2		; si oui on va en pingpong
+
+	ldy #$07			; Doit on boucler
+	lda (ANIM_VECTOR),Y
+	bne @boucle_rev		; si oui, on redemarre l'anim
+	lda #$00
+	ldy #$00
+	sta (ANIM_VECTOR),Y	; on stoppe l'anim
+	jmp @end_of_anim
+
+@boucle_rev:
+	lda #$00
+	ldy #$01
+	sta (ANIM_VECTOR),Y
+	jmp @end_of_anim
+
+@inc_frame:
+	LIBADDR_IND_INC ANIM_VECTOR, $01
+	jmp @end_of_anim
+
+@pingpong2:
+	lda #$00
+	ldy #$06
+	sta (ANIM_VECTOR),Y	; on passe en mode reverse
+	jmp @dec_frame
+;
+; Fin Animation
+;
+@decrease_delay:
+	LIBADDR_IND_DEC ANIM_VECTOR, $03 ; decrease delay
+@end_of_anim:
 	rts
 
 ;===============================================================================

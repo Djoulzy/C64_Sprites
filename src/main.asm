@@ -31,10 +31,10 @@ sprite1:
 .byte <up_right, >up_right ; Adresse de l'annimation
 
 up_right:
-.byte $00		; anim runnning
-.byte $02, $0F	; Current frame / Nb frames
-.byte $00, $04	; Current delay count / Animation delay
-.byte $00		; Type d'anim: normal/ping-pong
+.byte $01		; anim runnning
+.byte $04, $04	; Current frame / Last frame
+.byte $00, $0F	; Current delay count / Animation delay
+.byte $01		; Type d'anim: normal/ping-pong
 .byte $00		; sens $00 = normal / $01 = reverse
 .byte $00		; boucle
 .byte sprites_data_loc / $40 ; frameset location VIC (Adresse du bank / 64)
@@ -46,6 +46,7 @@ up_right:
 ;===============================================================================
 
 ; Code Includes
+.include "libAddr.asm"
 .include "libText.asm"
 .include "libSprite.asm"
 .include "libKeyboard.asm"
