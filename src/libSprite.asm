@@ -8,16 +8,27 @@ SPRITE_FRAME_VECTOR			= SCREEN_RAM + $3f8
 ; $FB-$FE (always)
 ANIM_VECTOR					= $FB
 
-; ship						= $2000			; Debut de la listes de frames vue par le 6502 (Bank 3 / Default)
-; sprite_ship_current_frame	= $fb
-; delay_animation_pointer		= $9e
-; sprite_frames_ship			= 16
-; sprite_pointer_ship			= ship / $40	; Debut de la listes de frames vue par le VIC (Adresse du bank / 64)
 sprite_background_color		= Black
 sprite_multicolor_1			= MediumGray
 sprite_multicolor_2			= White
-; sprite_ship_color			= Red
 
+sprt_X_LO			= $00
+sprt_X_HI			= $01
+sprt_Y				= $02
+sprt_priority		= $03
+sprt_color			= $04
+sprt_anim_state		= $05
+sprt_anim_addr_lo	= $06
+sprt_anim_addr_hi	= $07
+
+anim_frame_act		= $00
+anim_frame_last		= $01
+anim_delay_count	= $02
+anim_delay			= $03
+anim_pingpong		= $04
+anim_sens			= $05
+anim_boucle			= $06
+anim_addr			= $07
 ;===============================================================================
 
 .macro LIBSPRITE_SETSHAREDCOLORS bgColor, mColor1, mColor2
@@ -35,9 +46,9 @@ sprite_multicolor_2			= White
 .endmacro
 
 .macro LIBSPRITE_SETVECTOR sprite_num, sprite_addr
-	lda sprite_addr+6
+	lda sprite_addr+sprt_anim_addr_lo
 	sta ANIM_VECTOR
-	lda sprite_addr+7
+	lda sprite_addr+sprt_anim_addr_hi
 	sta ANIM_VECTOR+1
 .endmacro
 
@@ -48,29 +59,25 @@ sprite_multicolor_2			= White
 	lda #01 << sprite_num		; set Multicolor mode for Sprite
 	ora $d01c
 	sta $d01c
-	lda sprite_addr+3
+	lda sprite_addr+sprt_priority
 	and #$01 << sprite_num
 	ora $d01b					; Sprites have priority over background
 	sta $d01b
-
-	; lda sprite_addr+4			; On initialise la frame actuelle
-	; sta sprite_addr+3			; sur la derniere position
-
-	lda sprite_addr+4			; On positione la couleur individuelle
+	lda sprite_addr+sprt_color			; On positione la couleur individuelle
 	sta $d027+sprite_num
 .endmacro
 
-.macro LIBSPRITE_SETFRAME sprite_num
-	ldy #$08
+.macro LIBSPRITE_DRAW_FRAME sprite_num
+	ldy #anim_addr
 	lda (ANIM_VECTOR),Y
-	ldy #$01
+	ldy #anim_frame_act
 	clc
 	adc (ANIM_VECTOR),Y
 	sta SPRITE_FRAME_VECTOR+sprite_num
 .endmacro
 
 .macro LIBSPRITE_SETPOS sprite_num, sprite_addr
-	lda sprite_addr+1
+	lda sprite_addr+sprt_X_HI
 	bne :+						; Si != 0 on jump
 	lda #$01 << sprite_num
 	clc
@@ -82,198 +89,172 @@ sprite_multicolor_2			= White
 	ora $d010					
 
 :	sta $d010					; set X-Coord high bit (9th Bit)
-	lda sprite_addr				; set Sprite#0 positions with X/Y coords to
+	lda sprite_addr+sprt_X_LO	; set Sprite#0 positions with X/Y coords to
 	sta $d000+(sprite_num<<1)   ; bottom border of screen on the outer right
-	lda sprite_addr+2			; $d000 corresponds to X-Coord
+	lda sprite_addr+sprt_Y		; $d000 corresponds to X-Coord
 	sta $d001+(sprite_num<<1)   ; $d001 corresponds to Y-Coord
 .endmacro
 
 .macro LIBSPRITE_START_ANIM sprite_addr, anim
-	lda <anim
-	sta sprite_addr+6
-	lda >anim
-	sta sprite_addr+7
+	lda sprite_addr+sprt_anim_state
+	bne :+
+	lda #<anim
+	sta sprite_addr+sprt_anim_addr_lo
+	lda #>anim
+	sta sprite_addr+sprt_anim_addr_hi
 	lda #$01
-	sta sprite_addr+5
+	sta sprite_addr+sprt_anim_state
+:
 .endmacro
 
 .macro LIBSPRITE_UP sprite_num, sprite_addr
-	dec sprite_addr+2
+	dec sprite_addr+sprt_Y
 	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
 .macro LIBSPRITE_DOWN sprite_num, sprite_addr
-	inc sprite_addr+2
+	inc sprite_addr+sprt_Y
 	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
 .macro LIBSPRITE_RIGHT sprite_num, sprite_addr
-	inc sprite_addr
+	inc sprite_addr+sprt_X_LO
 	bne :+
 	lda #$01
-	sta sprite_addr+1
+	sta sprite_addr+sprt_X_HI
 :	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
 .macro LIBSPRITE_LEFT sprite_num, sprite_addr
-	dec sprite_addr
+	dec sprite_addr+sprt_X_LO
 	bne :+
 	lda #$00
-	sta sprite_addr+1
+	sta sprite_addr+sprt_X_HI
 :	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
 ;===============================================================================
 
 init_sprite:
-	; lda #sprite_frames_ship
-	; sta sprite_ship_current_frame
 	LIBSPRITE_SETSHAREDCOLORS sprite_background_color, sprite_multicolor_1, sprite_multicolor_2
 	LIBSPRITE_INIT 0, sprite1
 	LIBSPRITE_SETVECTOR 0, sprite1
-	LIBSPRITE_SETFRAME 0
+	LIBSPRITE_DRAW_FRAME 0
 	LIBSPRITE_SETPOS 0, sprite1
-
-	; lda #$01
-	; LIBSPRITE_SETFRAME 1, sprite_pointer_ship
-	; LIBSPRITE_INIT 1, sprite_ship_color
-	; LIBSPRITE_SETPOS 1, $B0, $64
-
-	; lda #$08
-	; LIBSPRITE_SETFRAME 6, sprite_pointer_ship
-	; LIBSPRITE_INIT 6, sprite_ship_color
-	; LIBSPRITE_SETPOS 6, $B0, $B0
-
 	rts
 
 ;===============================================================================
 
 spriteAnim:
-; 	lda sprite1+6
-; 	bne @end			; Si delay count != 0 on jump en @end
-; 	lda sprite1+7		; On repositionne le compteur
-; 	sta sprite1+6		; avec le Animation delay 
-
-; 	LIBSPRITE_SETFRAME 0, sprite1 ; Affiche la frame actuelle
-; 	lda sprite1+3		; on regarde si la current frame est à 0
-; 	bne @decr			; si non on va en @dec
-; 	lda sprite1+4		; si oui, on place Nb Frame dans la current frame
-; 	sta sprite1+3
-; 	jmp @end
-
-; @decr:
-; 	dec sprite1+3
-; @end:
-; 	dec sprite1+6
 	LIBSPRITE_SETVECTOR 0, sprite1
 
-	lda sprite1
+	lda sprite1+sprt_anim_state
 	jeq @end_of_anim		; si animation not running on sort
 
-	ldy #$03			; check delay
+	ldy #anim_delay_count	; check delay
 	lda (ANIM_VECTOR),Y
 	jne @decrease_delay
 
-	LIBSPRITE_SETFRAME 0
-	ldy #$04			; load anim delay
+	LIBSPRITE_DRAW_FRAME 0
+	ldy #anim_delay			; load anim delay
 	lda (ANIM_VECTOR),Y
-	ldy #$03
-	sta (ANIM_VECTOR),Y	; restart counter delay
+	ldy #anim_delay_count
+	sta (ANIM_VECTOR),Y		; restart counter delay
 
-	ldy #$06
+	ldy #anim_sens
 	lda (ANIM_VECTOR),Y
 	bne @reverse
 ;
 ; Animation normale
 ;
-	ldy #$01			; On charge la frame actuelle
+	ldy #anim_frame_act			; On charge la frame actuelle
 	lda (ANIM_VECTOR),Y	; on regarde si elle est à 0
 	bne @dec_frame		; sinon on va en dec_frame
 
-	ldy #$05			; mode ping-pong
+	ldy #anim_pingpong			; mode ping-pong
 	lda (ANIM_VECTOR),Y
 	bne @pingpong1		; si oui on va en pingpong
 
-	ldy #$07			; Doit on boucler
+	ldy #anim_boucle			; Doit on boucler
 	lda (ANIM_VECTOR),Y
 	bne @boucle_norm	; si oui, on redemarre l'anim
 	lda #$00
-	sta sprite1			; on stoppe l'anim
+	sta sprite1+sprt_anim_state		; on stoppe l'anim
 	jmp @end_of_anim
 
 @boucle_norm:
-	ldy #$02
+	ldy #anim_frame_last
 	lda (ANIM_VECTOR),Y
-	ldy #$01
+	ldy #anim_frame_act
 	sta (ANIM_VECTOR),Y
 	jmp @end_of_anim
 
 @dec_frame:
-	LIBADDR_IND_DEC ANIM_VECTOR, $01
+	LIBADDR_IND_DEC ANIM_VECTOR, anim_frame_act
 	jmp @end_of_anim
 
 @pingpong1:
 	lda #$01
-	ldy #$06
+	ldy #anim_sens
 	sta (ANIM_VECTOR),Y	; on passe en mode reverse
 
-	ldy #$07			; Doit on boucler
+	ldy #anim_boucle			; Doit on boucler
 	lda (ANIM_VECTOR),Y
 	bne @inc_frame		; si oui, on redemarre l'anim
 
 	lda #$00			; Sinon
-	ldx #$05
+	ldy #anim_pingpong
 	sta (ANIM_VECTOR),Y	; On annule le mode pingpong
 	jmp @inc_frame
 ;
 ; Animation inverse
 ;
 @reverse:
-	ldy #$01			; On charge la frame actuelle
+	ldy #anim_frame_act			; On charge la frame actuelle
 	lda (ANIM_VECTOR),Y
-	ldy #$02
+	ldy #anim_frame_last
 	cmp (ANIM_VECTOR),Y ; on compare avec la last frame
 	bne @inc_frame		; si non egal on va incrementer la frame
 
-	ldy #$05			; mode ping-pong
+	ldy #anim_pingpong			; mode ping-pong
 	lda (ANIM_VECTOR),Y
 	bne @pingpong2		; si oui on va en pingpong
 
-	ldy #$07			; Doit on boucler
+	ldy #anim_boucle			; Doit on boucler
 	lda (ANIM_VECTOR),Y
 	bne @boucle_rev		; si oui, on redemarre l'anim
 	lda #$00
-	sta sprite1			; on stoppe l'anim
+	sta sprite1+sprt_anim_state			; on stoppe l'anim
 	jmp @end_of_anim
 
 @boucle_rev:
 	lda #$00
-	ldy #$01
+	ldy #anim_frame_act
 	sta (ANIM_VECTOR),Y
 	jmp @end_of_anim
 
 @inc_frame:
-	LIBADDR_IND_INC ANIM_VECTOR, $01
+	LIBADDR_IND_INC ANIM_VECTOR, anim_frame_act
 	jmp @end_of_anim
 
 @pingpong2:
 	lda #$00
-	ldy #$06
+	ldy #anim_sens
 	sta (ANIM_VECTOR),Y	; on passe en mode normal
 
-	ldy #$07			; Doit on boucler
+	ldy #anim_boucle			; Doit on boucler
 	lda (ANIM_VECTOR),Y
 	bne @dec_frame		; si oui, on redemarre l'anim
 
 	lda #$00			; Sinon
-	ldx #$05
+	ldy #anim_pingpong
 	sta (ANIM_VECTOR),Y	; On annule le mode pingpong
 	jmp @dec_frame
 ;
 ; Fin Animation
 ;
 @decrease_delay:
-	LIBADDR_IND_DEC ANIM_VECTOR, $03 ; decrease delay
+	LIBADDR_IND_DEC ANIM_VECTOR, anim_delay_count ; decrease delay
 @end_of_anim:
 	rts
 

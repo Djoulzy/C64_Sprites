@@ -29,7 +29,7 @@ sprite1:		; 8 bytes
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
 .byte Red		; Uniq color (foreground)
 .byte $00		; anim runnning
-.byte <up_left, >up_left ; Adresse de l'annimation
+.byte <up_right, >up_right ; Adresse de l'annimation
 
 up_right:		; 8 bytes
 .byte $00, $04	; Current frame / Last frame
