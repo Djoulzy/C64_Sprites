@@ -209,6 +209,14 @@ spriteAnim:
 	lda #$01
 	ldy #$06
 	sta (ANIM_VECTOR),Y	; on passe en mode reverse
+
+	ldy #$07			; Doit on boucler
+	lda (ANIM_VECTOR),Y
+	bne @inc_frame		; si oui, on redemarre l'anim
+
+	lda #$00			; Sinon
+	ldx #$05
+	sta (ANIM_VECTOR),Y	; On annule le mode pingpong
 	jmp @inc_frame
 ;
 ; Animation inverse
@@ -245,7 +253,15 @@ spriteAnim:
 @pingpong2:
 	lda #$00
 	ldy #$06
-	sta (ANIM_VECTOR),Y	; on passe en mode reverse
+	sta (ANIM_VECTOR),Y	; on passe en mode normal
+
+	ldy #$07			; Doit on boucler
+	lda (ANIM_VECTOR),Y
+	bne @dec_frame		; si oui, on redemarre l'anim
+
+	lda #$00			; Sinon
+	ldx #$05
+	sta (ANIM_VECTOR),Y	; On annule le mode pingpong
 	jmp @dec_frame
 ;
 ; Fin Animation
