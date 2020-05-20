@@ -32,6 +32,13 @@ sprite_multicolor_2			= White
 	sta $d010	; reset sprites X pos 9th bit
 .endmacro
 
+.macro LIBSPRITE_SETVECTOR sprite_num, sprite_addr
+	lda sprite_addr+5
+	sta ANIM_VECTOR
+	lda sprite_addr+6
+	sta ANIM_VECTOR+1
+.endmacro
+
 .macro LIBSPRITE_INIT sprite_num, sprite_addr
 	lda #01 << sprite_num		; enable Sprite
 	ora $d015
@@ -51,11 +58,11 @@ sprite_multicolor_2			= White
 	sta $d027+sprite_num
 .endmacro
 
-.macro LIBSPRITE_SETFRAME sprite_num, sprite_addr
-	clc
+.macro LIBSPRITE_SETFRAME sprite_num
 	ldy #$08
 	lda (ANIM_VECTOR),Y
 	ldy #$01
+	clc
 	adc (ANIM_VECTOR),Y
 	sta SPRITE_FRAME_VECTOR+sprite_num
 .endmacro
@@ -112,7 +119,8 @@ init_sprite:
 	; sta sprite_ship_current_frame
 	LIBSPRITE_SETSHAREDCOLORS sprite_background_color, sprite_multicolor_1, sprite_multicolor_2
 	LIBSPRITE_INIT 0, sprite1
-	; LIBSPRITE_SETFRAME 0, sprite1
+	LIBSPRITE_SETVECTOR 0, sprite1
+	LIBSPRITE_SETFRAME 0
 	LIBSPRITE_SETPOS 0, sprite1
 
 	; lda #$01
@@ -150,10 +158,32 @@ spriteAnim:
 	sta ANIM_VECTOR
 	lda sprite1+6
 	sta ANIM_VECTOR+1
-	LIBSPRITE_SETFRAME 0, sprite1;
-	lda (ANIM_VECTOR)
-	beq @stop	; si animation not running on sort
 
+	ldy #$00
+	lda (ANIM_VECTOR),Y
+	beq @stop			; si animation not running on sort
+
+	ldy #$03			; check delay
+	lda (ANIM_VECTOR),Y
+	bne @decrease_delay
+
+	LIBSPRITE_SETFRAME 0
+	ldy #$06
+	lda (ANIM_VECTOR),Y
+	bne @reverse
+	ldy #$04			; load anim delay
+	lda (ANIM_VECTOR),Y
+	ldy #$03
+	sta (ANIM_VECTOR),Y	; restart counter delay
+@reverse:
+
+@decrease_delay:
+	ldy #$03			; decrease delay
+	lda (ANIM_VECTOR),Y
+	tax
+	dex
+	txa
+	sta (ANIM_VECTOR),Y
 @stop:
 	rts
 

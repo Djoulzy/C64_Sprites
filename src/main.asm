@@ -35,7 +35,7 @@ up_right:
 .byte $02, $0F	; Current frame / Nb frames
 .byte $00, $04	; Current delay count / Animation delay
 .byte $00		; Type d'anim: normal/ping-pong
-.byte $00		; sens
+.byte $00		; sens $00 = normal / $01 = reverse
 .byte $00		; boucle
 .byte sprites_data_loc / $40 ; frameset location VIC (Adresse du bank / 64)
 
