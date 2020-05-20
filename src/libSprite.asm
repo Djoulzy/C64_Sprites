@@ -52,12 +52,8 @@ sprite_multicolor_2			= White
 .endmacro
 
 .macro LIBSPRITE_SETFRAME sprite_num, sprite_addr
-	lda sprite_addr+9
-	sta ANIM_VECTOR
-	lda sprite_addr+10
-	sta ANIM_VECTOR+1
 	clc
-	ldy #$06
+	ldy #$08
 	lda (ANIM_VECTOR),Y
 	ldy #$01
 	adc (ANIM_VECTOR),Y
@@ -150,8 +146,15 @@ spriteAnim:
 ; 	dec sprite1+3
 ; @end:
 ; 	dec sprite1+6
-
+	lda sprite1+5
+	sta ANIM_VECTOR
+	lda sprite1+6
+	sta ANIM_VECTOR+1
 	LIBSPRITE_SETFRAME 0, sprite1;
+	lda (ANIM_VECTOR)
+	beq @stop	; si animation not running on sort
+
+@stop:
 	rts
 
 ;===============================================================================

@@ -26,15 +26,14 @@ sid_play = $1004      ; play music routine
 sprite1:
 .byte $05, $FF	; X Coord (LO/HI)
 .byte $64		; Y Coord
-.byte $00, $05	; Current frame / Nb frames
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
-.byte $00, $04	; Current delay count / Animation delay
 .byte Red		; Uniq color (foreground)
 .byte <up_right, >up_right ; Adresse de l'annimation
 
 up_right:
 .byte $00		; anim runnning
 .byte $02, $0F	; Current frame / Nb frames
+.byte $00, $04	; Current delay count / Animation delay
 .byte $00		; Type d'anim: normal/ping-pong
 .byte $00		; sens
 .byte $00		; boucle
