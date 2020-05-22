@@ -23,45 +23,23 @@ sid_play = $1004      ; play music routine
 .incbin "res/down_right.spd", 3
 .incbin "res/down_left.spd", 3
 
-sprite1:		; 8 bytes
+sprite1:		; 14 bytes
 .byte $05, $FF	; X Coord (LO/HI)
 .byte $64		; Y Coord
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
 .byte Red		; Uniq color (foreground)
 .byte $00		; anim runnning
-.byte <up_right, >up_right ; Adresse de l'annimation
-
-up_right:		; 8 bytes
 .byte $00, $04	; Current frame / Last frame
 .byte $00, $0F	; Current delay count / Animation delay
 .byte $00		; Type d'anim: normal/ping-pong
 .byte $01		; sens $00 = normal / $01 = reverse
 .byte $00		; boucle
-.byte $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
+.byte $00		; Adresse VIC de l'annimation
 
-up_left:		; 8 bytes
-.byte $00, $04	; Current frame / Last frame
-.byte $00, $0F	; Current delay count / Animation delay
-.byte $00		; Type d'anim: normal/ping-pong
-.byte $01		; sens $00 = normal / $01 = reverse
-.byte $00		; boucle
-.byte ($2000 + 320) / $40 ; frameset location VIC (Adresse du bank / 64)
-
-down_right:		; 8 bytes
-.byte $00, $04	; Current frame / Last frame
-.byte $00, $0F	; Current delay count / Animation delay
-.byte $00		; Type d'anim: normal/ping-pong
-.byte $01		; sens $00 = normal / $01 = reverse
-.byte $00		; boucleh
-.byte ($2000 + 640) / $40 ; frameset location VIC (Adresse du bank / 64)
-
-down_left:		; 8 bytes
-.byte $00, $04	; Current frame / Last frame
-.byte $00, $0F	; Current delay count / Animation delay
-.byte $00		; Type d'anim: normal/ping-pong
-.byte $01		; sens $00 = normal / $01 = reverse
-.byte $00		; boucle
-.byte ($2000 + 960) / $40 ; frameset location VIC (Adresse du bank / 64)
+up_right		= $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
+up_left			= ($2000 + 320) / $40 ; frameset location VIC (Adresse du bank / 64)
+down_right		= ($2000 + 640) / $40 ; frameset location VIC (Adresse du bank / 64)
+down_left		= ($2000 + 960) / $40 ; frameset location VIC (Adresse du bank / 64)
 
 ;===============================================================================
 .segment "CODE"
@@ -203,7 +181,7 @@ start:
 irq:
 	dec $d019        ; acknowledge IRQ
 	jsr colwash      ; jump to color cycling routine
-	jsr check_controls
+	; jsr check_controls
 	jsr spriteAnim
 	jsr sid_play
 	jmp $ea81        ; return to kernel interrupt routine
