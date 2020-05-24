@@ -5,7 +5,7 @@ OUTPUT=Game
 INPUT=main
 
 if [ -f "build/$OUTPUT.prg" ]; then
-    echo "Deleting $OUTPUT.prg"
+    echo "Dxeleting $OUTPUT.prg"
     rm -fr "build/$OUTPUT.prg"
 fi
 

@@ -18,29 +18,27 @@ sid_play = $1004      ; play music routine
 ;===============================================================================
 ; Sprite include
 .segment "SPRITE"
-.incbin "res/up_right.spd", 3		; 320 bytes
-.incbin "res/up_left.spd", 3
-.incbin "res/down_right.spd", 3
-.incbin "res/down_left.spd", 3
+.incbin "res/right.spd", 3		; 576 bytes
+.incbin "res/left.spd", 3		; 576 bytes
+.incbin "res/rotate.spd", 3		; 960 bytes
 
-sprite1:		; 14 bytes
+sprite1:		; 15 bytes
 .byte $05, $FF	; X Coord (LO/HI)
 .byte $64		; Y Coord
 .byte $00		; Priority ($00 priority sprite / $FF prority background)
 .byte Red		; Uniq color (foreground)
 .byte $00		; anim runnning
-.byte $00, $04	; Current frame / Last frame
-.byte $00, $0F	; Current delay count / Animation delay
+.byte $00		; Go to IDLE
+.byte $00, $04, $08	; Current frame / Stop frame / Last frame
+.byte $00, $01	; Current delay count / Animation delay
 .byte $00		; Type d'anim: normal/ping-pong
-.byte $01		; sens $00 = normal / $01 = reverse
+.byte $00		; sens $00 = normal / $01 = reverse
 .byte $00		; boucle
 .byte $00		; Adresse VIC de l'annimation
 
-up_right		= $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
-up_left			= ($2000 + 320) / $40 ; frameset location VIC (Adresse du bank / 64)
-down_right		= ($2000 + 640) / $40 ; frameset location VIC (Adresse du bank / 64)
-down_left		= ($2000 + 960) / $40 ; frameset location VIC (Adresse du bank / 64)
-
+right		= $80 ; $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
+left		= ($2000 + 579) / $40 ; frameset location VIC (Adresse du bank / 64)
+rotate		= ($2000 + 1158) / $40
 ;===============================================================================
 .segment "CODE"
 	jmp start						; run the init code then flow into the update code
@@ -181,7 +179,7 @@ start:
 irq:
 	dec $d019        ; acknowledge IRQ
 	jsr colwash      ; jump to color cycling routine
-	; jsr check_controls
+	jsr check_controls
 	jsr spriteAnim
 	jsr sid_play
 	jmp $ea81        ; return to kernel interrupt routine
@@ -189,35 +187,42 @@ irq:
 ;===============================================================================
 
 check_controls:
-.scope
+	lda #$00
+	sta $dc00		; port a
+	lda $dc01       ; port b
+	cmp #$ff
+	jeq nokey
+
 	LIBKBD_CHECK_KEY U_KEY_ROW, U_KEY_COL
 	bne key_down
-	LIBSPRITE_START_ANIM sprite1, up_left
+	LIBSPRITE_START_ANIM sprite1, $00, $00
 	LIBSPRITE_UP 0, sprite1
 key_down:
 	LIBKBD_CHECK_KEY N_KEY_ROW, N_KEY_COL
 	bne key_right
-	LIBSPRITE_START_ANIM sprite1, down_left
+	LIBSPRITE_START_ANIM sprite1, $08, $01
 	LIBSPRITE_DOWN 0, sprite1
 key_right:
 	LIBKBD_CHECK_KEY J_KEY_ROW, J_KEY_COL
 	bne key_left
+	LIBSPRITE_SET_ANIM sprite1, rotate
+	LIBSPRITE_START_ANIM sprite1, $0D, $01
 	LIBSPRITE_RIGHT 0, sprite1
 key_left:
 	LIBKBD_CHECK_KEY H_KEY_ROW, H_KEY_COL
 	bne key_exit
+	LIBSPRITE_SET_ANIM sprite1, rotate
+	LIBSPRITE_START_ANIM sprite1, $00, $00
 	LIBSPRITE_LEFT 0, sprite1
 key_exit:
 	LIBKBD_CHECK_KEY X_KEY_ROW, X_KEY_COL
-.endscope
-	beq stop
-	rts
-
-;===============================================================================
-
-stop:
+	bne end_kbd
 	LIBTEXT_CLEARSCREEN_V Blue
 	lda #$00
 	sta $d015        ; turn off all sprites
 	jmp $ea81        ; jmp to regular interrupt routine
+	brk
+nokey:
+	LIBSPRITE_GO_TO_IDLE sprite1, $04
+end_kbd:
 	rts
