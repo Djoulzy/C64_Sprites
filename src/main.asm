@@ -22,19 +22,19 @@ sid_play = $1004      ; play music routine
 .incbin "res/left.spd", 3		; 576 bytes
 .incbin "res/rotate.spd", 3		; 960 bytes
 
-sprite1:		; 15 bytes
-.byte $05, $FF	; X Coord (LO/HI)
-.byte $64		; Y Coord
-.byte $00		; Priority ($00 priority sprite / $FF prority background)
-.byte Red		; Uniq color (foreground)
-.byte $00		; anim runnning
-.byte $00		; Go to IDLE
-.byte $00, $04, $08	; Current frame / Stop frame / Last frame
-.byte $00, $01	; Current delay count / Animation delay
-.byte $00		; Type d'anim: normal/ping-pong
-.byte $00		; sens $00 = normal / $01 = reverse
-.byte $00		; boucle
-.byte $00		; Adresse VIC de l'annimation
+sprite1:				; 15 bytes
+.byte $05, $FF			; X Coord (LO/HI)
+.byte $64				; Y Coord
+.byte $00				; Priority ($00 priority sprite / $FF prority background)
+.byte Red				; Uniq color (foreground)
+.byte $00				; anim runnning
+.byte $00				; Go to IDLE
+.byte $00, $04, $08		; Current frame / Stop frame / Last frame
+.byte $00, $0F			; Current delay count / Animation delay
+.byte $00				; Type d'anim: normal/ping-pong
+.byte $00				; sens $00 = normal / $01 = reverse
+.byte $00				; boucle
+.byte $00				; Adresse VIC de l'annimation
 
 right		= $80 ; $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
 left		= ($2000 + 579) / $40 ; frameset location VIC (Adresse du bank / 64)
@@ -179,8 +179,8 @@ start:
 irq:
 	dec $d019        ; acknowledge IRQ
 	jsr colwash      ; jump to color cycling routine
-	jsr check_controls
 	jsr spriteAnim
+	jsr check_controls
 	jsr sid_play
 	jmp $ea81        ; return to kernel interrupt routine
 

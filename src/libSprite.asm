@@ -87,13 +87,13 @@ anim_addr_vic		= $0F
 
 .macro LIBSPRITE_UP sprite_num, sprite_addr
 	dec sprite_addr+sprt_Y
-	dec sprite_addr+sprt_Y
+	; dec sprite_addr+sprt_Y
 	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
 .macro LIBSPRITE_DOWN sprite_num, sprite_addr
 	inc sprite_addr+sprt_Y
-	inc sprite_addr+sprt_Y
+	; inc sprite_addr+sprt_Y
 	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
@@ -129,15 +129,15 @@ anim_addr_vic		= $0F
 .endmacro
 
 .macro LIBSPRITE_START_ANIM sprite_addr, stop, sens
-	lda sprite_addr+sprt_anim_state
-	bne :+
+	; lda sprite_addr+sprt_anim_state
+	; bne :+
 	lda #stop
 	sta sprite_addr+anim_frame_stop
 	lda #sens
 	sta sprite_addr+anim_sens
 	lda #$01
 	sta sprite_addr+sprt_anim_state
-:	nop
+; :	nop
 .endmacro
 
 .macro LIBSPRITE_GO_TO_IDLE sprite_addr, stop
@@ -146,6 +146,8 @@ anim_addr_vic		= $0F
 	lda #$01
 	sta sprite1+sprt_go_to_idle
 	sta sprite1+sprt_anim_state
+	lda #$00
+	sta sprite1+anim_delay_count
 	lda #stop
 	sta sprite_addr+anim_frame_stop
 	lda sprite_addr+anim_sens
