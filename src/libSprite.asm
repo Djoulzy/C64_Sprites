@@ -13,19 +13,21 @@ sprite_multicolor_2			= White
 sprt_X_LO			= $00
 sprt_X_HI			= $01
 sprt_Y				= $02
-sprt_priority		= $03
-sprt_color			= $04
-sprt_anim_state		= $05
-sprt_go_to_idle		= $06
-anim_frame_act		= $07
-anim_frame_stop		= $08
-anim_frame_last		= $09
-anim_delay_count	= $0A
-anim_delay			= $0B
-anim_pingpong		= $0C
-anim_sens			= $0D
-anim_boucle			= $0E
-anim_addr_vic		= $0F
+sprt_velocityX		= $03
+sprt_velocityY		= $04
+sprt_priority		= $05
+sprt_color			= $06
+sprt_anim_state		= $07
+sprt_go_to_idle		= $08
+anim_frame_act		= $09
+anim_frame_stop		= $0A
+anim_frame_last		= $0B
+anim_delay_count	= $0C
+anim_delay			= $0D
+anim_pingpong		= $0E
+anim_sens			= $0F
+anim_boucle			= $10
+anim_addr_vic		= $11
 
 ;===============================================================================
 ; INIT
@@ -126,6 +128,8 @@ anim_addr_vic		= $0F
 .macro LIBSPRITE_SET_ANIM sprite_addr, anim
 	lda #anim
 	sta sprite_addr+anim_addr_vic
+	lda #$00
+	sta sprite_addr+anim_delay_count
 .endmacro
 
 .macro LIBSPRITE_START_ANIM sprite_addr, stop, sens
@@ -141,13 +145,13 @@ anim_addr_vic		= $0F
 .endmacro
 
 .macro LIBSPRITE_GO_TO_IDLE sprite_addr, stop
-	lda sprite1+sprt_go_to_idle
+	lda sprite_addr+sprt_go_to_idle
 	bne :+++				; si deja en retour vers idle on sort
 	lda #$01
-	sta sprite1+sprt_go_to_idle
-	sta sprite1+sprt_anim_state
+	sta sprite_addr+sprt_go_to_idle
+	sta sprite_addr+sprt_anim_state
 	lda #$00
-	sta sprite1+anim_delay_count
+	sta sprite_addr+anim_delay_count
 	lda #stop
 	sta sprite_addr+anim_frame_stop
 	lda sprite_addr+anim_sens
@@ -265,4 +269,40 @@ spriteAnim:
 
 ;===============================================================================
 
+anim_manager:
+; ordonnee
+	lda sprite1+sprt_velocityY
+	beq abscisse
+	bmi go_up
+; go_down
+	LIBSPRITE_START_ANIM sprite1, $08, $01
+	LIBSPRITE_DOWN 0, sprite1
+	jmp abscisse
 go_up:
+	LIBSPRITE_START_ANIM sprite1, $00, $00
+	LIBSPRITE_UP 0, sprite1
+abscisse:
+	lda sprite1+sprt_velocityY
+	ora sprite1+sprt_velocityX
+	jeq goto_idle
+	lda sprite1+sprt_velocityX
+	jeq end_manager
+	bmi go_left
+; go_right
+	LIBSPRITE_SET_ANIM sprite1, rotate
+	LIBSPRITE_START_ANIM sprite1, $0F, $01
+	LIBSPRITE_RIGHT 0, sprite1
+	jmp end_manager
+go_left:
+	LIBSPRITE_SET_ANIM sprite1, rotate
+	LIBSPRITE_START_ANIM sprite1, $0F, $00
+	LIBSPRITE_LEFT 0, sprite1
+	jmp end_manager
+goto_idle:
+	LIBSPRITE_GO_TO_IDLE sprite1, $04
+end_manager:
+	lda #$00
+	sta sprite1+sprt_velocityX
+	sta sprite1+sprt_velocityY
+	jsr spriteAnim
+	rts

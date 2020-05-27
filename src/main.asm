@@ -25,12 +25,14 @@ sid_play = $1004      ; play music routine
 sprite1:				; 15 bytes
 .byte $05, $FF			; X Coord (LO/HI)
 .byte $64				; Y Coord
+.byte $00, $00			; Velocity X, velocity Y
 .byte $00				; Priority ($00 priority sprite / $FF prority background)
 .byte Red				; Uniq color (foreground)
 .byte $00				; anim runnning
 .byte $00				; Go to IDLE
-.byte $00, $04, $08		; Current frame / Stop frame / Last frame
-.byte $00, $0F			; Current delay count / Animation delay
+; .byte $00				; Transition (ininterruptible)
+.byte $04, $04, $08		; Current frame / Stop frame / Last frame
+.byte $00, $02			; Current delay count / Animation delay
 .byte $00				; Type d'anim: normal/ping-pong
 .byte $00				; sens $00 = normal / $01 = reverse
 .byte $00				; boucle
@@ -136,7 +138,6 @@ start:
 	;====================
 	; Initialize Memory
 	;====================
-
 	sei         ; set interrupt disable flag
 
 	ldx #$00
@@ -179,8 +180,8 @@ start:
 irq:
 	dec $d019        ; acknowledge IRQ
 	jsr colwash      ; jump to color cycling routine
-	jsr spriteAnim
 	jsr check_controls
+	jsr anim_manager
 	jsr sid_play
 	jmp $ea81        ; return to kernel interrupt routine
 
@@ -191,29 +192,27 @@ check_controls:
 	sta $dc00		; port a
 	lda $dc01       ; port b
 	cmp #$ff
-	jeq nokey
+	jeq end_kbd
 
 	LIBKBD_CHECK_KEY U_KEY_ROW, U_KEY_COL
 	bne key_down
-	LIBSPRITE_START_ANIM sprite1, $00, $00
-	LIBSPRITE_UP 0, sprite1
+	lda #$F1
+	sta sprite1+sprt_velocityY
 key_down:
 	LIBKBD_CHECK_KEY N_KEY_ROW, N_KEY_COL
 	bne key_right
-	LIBSPRITE_START_ANIM sprite1, $08, $01
-	LIBSPRITE_DOWN 0, sprite1
+	lda #$01
+	sta sprite1+sprt_velocityY
 key_right:
 	LIBKBD_CHECK_KEY J_KEY_ROW, J_KEY_COL
 	bne key_left
-	LIBSPRITE_SET_ANIM sprite1, rotate
-	LIBSPRITE_START_ANIM sprite1, $0D, $01
-	LIBSPRITE_RIGHT 0, sprite1
+	lda #$01
+	sta sprite1+sprt_velocityX
 key_left:
 	LIBKBD_CHECK_KEY H_KEY_ROW, H_KEY_COL
 	bne key_exit
-	LIBSPRITE_SET_ANIM sprite1, rotate
-	LIBSPRITE_START_ANIM sprite1, $00, $00
-	LIBSPRITE_LEFT 0, sprite1
+	lda #$F1
+	sta sprite1+sprt_velocityX
 key_exit:
 	LIBKBD_CHECK_KEY X_KEY_ROW, X_KEY_COL
 	bne end_kbd
@@ -222,7 +221,5 @@ key_exit:
 	sta $d015        ; turn off all sprites
 	jmp $ea81        ; jmp to regular interrupt routine
 	brk
-nokey:
-	LIBSPRITE_GO_TO_IDLE sprite1, $04
 end_kbd:
 	rts
