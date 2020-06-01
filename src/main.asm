@@ -18,9 +18,7 @@ sid_play = $1004      ; play music routine
 ;===============================================================================
 ; Sprite include
 .segment "SPRITE"
-.incbin "res/right.spd", 3		; 576 bytes
-.incbin "res/left.spd", 3		; 576 bytes
-.incbin "res/rotate.spd", 3		; 960 bytes
+.incbin "res/jules.spd", 3		; 2048 bytes
 
 sprite1:				; 15 bytes
 .byte $05, $FF			; X Coord (LO/HI)
@@ -182,6 +180,7 @@ irq:
 	jsr colwash      ; jump to color cycling routine
 	jsr check_controls
 	jsr anim_manager
+	jsr spriteAnim
 	jsr sid_play
 	jmp $ea81        ; return to kernel interrupt routine
 

@@ -59,10 +59,6 @@ anim_addr_vic		= $11
 	sta $d01b
 	lda sprite_addr+sprt_color	; On positione la couleur individuelle
 	sta $d027+sprite_num
-	lda #right					; On charge l'anim 'right'
-	sta sprite_addr+anim_addr_vic
-	lda sprite_addr+anim_frame_stop
-	sta sprite_addr+anim_frame_act
 .endmacro
 
 ;===============================================================================
@@ -87,32 +83,42 @@ anim_addr_vic		= $11
 	sta $d001+(sprite_num<<1)   ; $d001 corresponds to Y-Coord
 .endmacro
 
-.macro LIBSPRITE_UP sprite_num, sprite_addr
-	dec sprite_addr+sprt_Y
-	; dec sprite_addr+sprt_Y
-	LIBSPRITE_SETPOS sprite_num, sprite_addr
-.endmacro
-
-.macro LIBSPRITE_DOWN sprite_num, sprite_addr
-	inc sprite_addr+sprt_Y
-	; inc sprite_addr+sprt_Y
-	LIBSPRITE_SETPOS sprite_num, sprite_addr
-.endmacro
-
-.macro LIBSPRITE_RIGHT sprite_num, sprite_addr
-	inc sprite_addr+sprt_X_LO
-	bne :+
+.macro LIBSPRITE_MOVE sprite_num, sprite_addr
+	lda sprite_addr+sprt_velocityX
+	bmi @go_left					; go left
+	clc
+	adc sprite_addr+sprt_X_LO	; right
+	sta sprite_addr+sprt_X_LO
+	bne @move_y
 	lda #$01
 	sta sprite_addr+sprt_X_HI
-:	LIBSPRITE_SETPOS sprite_num, sprite_addr
-.endmacro
-
-.macro LIBSPRITE_LEFT sprite_num, sprite_addr
-	dec sprite_addr+sprt_X_LO
-	bne :+
+	jmp @move_y
+@go_left:						; left
+	and #$0F
+	sta $FB
+	lda sprite_addr+sprt_X_LO
+	sec
+	sbc $FB
+	sta sprite_addr+sprt_X_LO
+	bpl @move_y
 	lda #$00
 	sta sprite_addr+sprt_X_HI
-:	LIBSPRITE_SETPOS sprite_num, sprite_addr
+@move_y:						; move Y
+	lda sprite_addr+sprt_velocityY
+	bmi @go_up					; go up
+	clc
+	adc sprite_addr+sprt_Y		; down
+	sta sprite_addr+sprt_Y
+	jmp @end					; go end
+@go_up:			
+	and #$0F					; up
+	sta $FB
+	lda sprite_addr+sprt_Y
+	sec
+	sbc $FB
+	sta sprite_addr+sprt_Y
+@end:
+	LIBSPRITE_SETPOS sprite_num, sprite_addr
 .endmacro
 
 ;===============================================================================
@@ -133,18 +139,18 @@ anim_addr_vic		= $11
 .endmacro
 
 .macro LIBSPRITE_START_ANIM sprite_addr, stop, sens
-	; lda sprite_addr+sprt_anim_state
-	; bne :+
 	lda #stop
 	sta sprite_addr+anim_frame_stop
 	lda #sens
 	sta sprite_addr+anim_sens
 	lda #$01
 	sta sprite_addr+sprt_anim_state
-; :	nop
 .endmacro
 
 .macro LIBSPRITE_GO_TO_IDLE sprite_addr, stop
+	lda #stop
+	cmp sprite_addr+anim_frame_act
+	beq :+++
 	lda sprite_addr+sprt_go_to_idle
 	bne :+++				; si deja en retour vers idle on sort
 	lda #$01
@@ -168,6 +174,7 @@ anim_addr_vic		= $11
 init_sprite:
 	LIBSPRITE_SETSHAREDCOLORS sprite_background_color, sprite_multicolor_1, sprite_multicolor_2
 	LIBSPRITE_INIT 0, sprite1
+	LIBSPRITE_SET_ANIM sprite1, right
 	LIBSPRITE_DRAW_FRAME 0, sprite1
 	LIBSPRITE_SETPOS 0, sprite1
 	rts
@@ -270,39 +277,46 @@ spriteAnim:
 ;===============================================================================
 
 anim_manager:
-; ordonnee
-	lda sprite1+sprt_velocityY
-	beq abscisse
-	bmi go_up
-; go_down
-	LIBSPRITE_START_ANIM sprite1, $08, $01
-	LIBSPRITE_DOWN 0, sprite1
-	jmp abscisse
-go_up:
-	LIBSPRITE_START_ANIM sprite1, $00, $00
-	LIBSPRITE_UP 0, sprite1
-abscisse:
 	lda sprite1+sprt_velocityY
 	ora sprite1+sprt_velocityX
 	jeq goto_idle
+
+abscisse:
 	lda sprite1+sprt_velocityX
-	jeq end_manager
+	jeq ordonnee
 	bmi go_left
 ; go_right
 	LIBSPRITE_SET_ANIM sprite1, rotate
 	LIBSPRITE_START_ANIM sprite1, $0F, $01
-	LIBSPRITE_RIGHT 0, sprite1
-	jmp end_manager
+	lda #$01
+	sta sprite1+sprt_velocityX
+	jmp ordonnee
 go_left:
 	LIBSPRITE_SET_ANIM sprite1, rotate
-	LIBSPRITE_START_ANIM sprite1, $0F, $00
-	LIBSPRITE_LEFT 0, sprite1
+	LIBSPRITE_START_ANIM sprite1, $00, $00
+	lda #$F1
+	sta sprite1+sprt_velocityX
+
+ordonnee:
+	lda sprite1+sprt_velocityY
+	beq goto_idle
+	bmi go_up
+; go_down
+	LIBSPRITE_START_ANIM sprite1, $08, $01
+	lda #$01
+	sta sprite1+sprt_velocityY
 	jmp end_manager
+go_up:
+	LIBSPRITE_START_ANIM sprite1, $00, $00
+	lda #$F1
+	sta sprite1+sprt_velocityY
+	jmp end_manager
+
 goto_idle:
 	LIBSPRITE_GO_TO_IDLE sprite1, $04
 end_manager:
+	LIBSPRITE_MOVE 0, sprite1
 	lda #$00
 	sta sprite1+sprt_velocityX
 	sta sprite1+sprt_velocityY
-	jsr spriteAnim
 	rts

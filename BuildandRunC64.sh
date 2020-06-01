@@ -18,5 +18,5 @@ fi
 
 # if [ -f "build/$OUTPUT.prg" ]; then
 #     echo "Launching $OUTPUT.prg"
-#     $VC64 build/$OUTPUT.prg &
+#     VC64 build/$OUTPUT.prg &
 # fi
