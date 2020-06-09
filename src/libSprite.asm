@@ -17,17 +17,16 @@ sprt_velocityX		= $03
 sprt_velocityY		= $04
 sprt_priority		= $05
 sprt_color			= $06
-sprt_anim_state		= $07
-sprt_go_to_idle		= $08
-anim_frame_act		= $09
+anim_running		= $07
+anim_frame_start	= $08
+anim_frame_current	= $09
 anim_frame_stop		= $0A
-anim_frame_last		= $0B
-anim_delay_count	= $0C
-anim_delay			= $0D
-anim_pingpong		= $0E
-anim_sens			= $0F
-anim_boucle			= $10
-anim_addr_vic		= $11
+anim_delay_count	= $0B
+anim_delay			= $0C
+anim_pingpong		= $0D
+anim_sens			= $0E
+anim_boucle			= $0F
+anim_addr_vic		= $10
 
 ;===============================================================================
 ; INIT
@@ -46,7 +45,7 @@ anim_addr_vic		= $11
 	sta $d010					; reset sprites X pos 9th bit
 .endmacro
 
-.macro LIBSPRITE_INIT sprite_num, sprite_addr
+.macro LIBSPRITE_INIT sprite_num, sprite_addr, anim, start, stop
 	lda #01 << sprite_num		; enable Sprite
 	ora $d015
 	sta $d015
@@ -59,6 +58,13 @@ anim_addr_vic		= $11
 	sta $d01b
 	lda sprite_addr+sprt_color	; On positione la couleur individuelle
 	sta $d027+sprite_num
+	lda #anim
+	sta sprite_addr+anim_addr_vic
+	lda #start
+	sta sprite_addr+anim_frame_start
+	sta sprite_addr+anim_frame_current
+	lda #stop
+	sta sprite_addr+anim_frame_stop
 .endmacro
 
 ;===============================================================================
@@ -125,41 +131,43 @@ anim_addr_vic		= $11
 ; ANIMATION
 ;===============================================================================
 .macro LIBSPRITE_DRAW_FRAME sprite_num, sprite_addr
-	lda sprite_addr+anim_frame_act
+	lda sprite_addr+anim_frame_current
 	clc
 	adc sprite_addr+anim_addr_vic
 	sta SPRITE_FRAME_VECTOR+sprite_num
 .endmacro
 
-.macro LIBSPRITE_SET_ANIM sprite_addr, anim
-	lda #anim
-	sta sprite_addr+anim_addr_vic
-	lda #$00
-	sta sprite_addr+anim_delay_count
-.endmacro
-
-.macro LIBSPRITE_START_ANIM sprite_addr, stop, sens
+.macro LIBSPRITE_PLAY_ANIM sprite_addr, start, stop, sens
+	lda #start
+	sta sprite_addr+anim_frame_start
 	lda #stop
 	sta sprite_addr+anim_frame_stop
 	lda #sens
 	sta sprite_addr+anim_sens
 	lda #$01
-	sta sprite_addr+sprt_anim_state
+	sta sprite_addr+anim_running
 .endmacro
 
-.macro LIBSPRITE_GO_TO_IDLE sprite_addr, stop
-	lda #stop
-	cmp sprite_addr+anim_frame_act
+.macro LIBSPRITE_CHANGE_DIRECTION sprite_addr
+	lda sprite_addr+anim_sens
+	eor #$FF
+	sta sprite_addr+anim_sens
+	lda #$01
+	sta sprite_addr+anim_running
+.endmacro
+
+.macro LIBSPRITE_GO_TO_IDLE sprite_addr
+	lda sprite_addr+anim_frame_stop
+	cmp sprite_addr+anim_frame_current
 	beq :+++
 	lda sprite_addr+sprt_go_to_idle
 	bne :+++				; si deja en retour vers idle on sort
 	lda #$01
 	sta sprite_addr+sprt_go_to_idle
-	sta sprite_addr+sprt_anim_state
+	sta sprite_addr+anim_running
 	lda #$00
 	sta sprite_addr+anim_delay_count
-	lda #stop
-	sta sprite_addr+anim_frame_stop
+	lda sprite_addr+anim_frame_stop
 	lda sprite_addr+anim_sens
 	bne :+
 	lda #$01
@@ -173,16 +181,116 @@ anim_addr_vic		= $11
 
 init_sprite:
 	LIBSPRITE_SETSHAREDCOLORS sprite_background_color, sprite_multicolor_1, sprite_multicolor_2
-	LIBSPRITE_INIT 0, sprite1
-	LIBSPRITE_SET_ANIM sprite1, right
+	LIBSPRITE_INIT 0, sprite1, right, $04, $08
 	LIBSPRITE_DRAW_FRAME 0, sprite1
 	LIBSPRITE_SETPOS 0, sprite1
 	rts
 
 ;===============================================================================
 
+; spriteAnim:
+; 	lda sprite1+anim_running
+; 	bne :+							; si animation not running on sort
+; 	rts
+
+; :	LIBSPRITE_DRAW_FRAME 0, sprite1
+; 	lda sprite1+anim_delay_count	; check delay
+; 	jne @decrease_delay
+
+; 	lda sprite1+anim_delay			; load anim delay
+; 	sta sprite1+anim_delay_count	; restart counter delay
+
+; 	lda sprite1+anim_sens
+; 	bmi @negatif
+
+; 	lda sprite1+anim_frame_stop
+; 	sec
+; 	sbc sprite1+anim_frame_current
+; 	bmi @negatif
+; ;
+; ; Animation sens positif
+; ;
+; @positif:
+; 	lda sprite1+anim_frame_current	; On charge la frame actuelle
+; 	eor sprite1+anim_frame_stop		; on compare avec la last frame
+; 	bne @inc_frame					; si non egal on va incrementer la frame
+
+; 	lda sprite1+anim_pingpong		; mode ping-pong
+; 	bne @pingpong2					; si oui on va en pingpong
+
+; 	lda sprite1+anim_boucle			; Doit on boucler
+; 	bne @boucle_positif				; si oui, on redemarre l'anim
+; 	jmp @end_of_anim
+
+; @boucle_positif:
+; 	lda sprite1+anim_frame_start
+; 	sta sprite1+anim_frame_current
+; 	rts
+
+; @inc_frame:
+; 	inc sprite1+anim_frame_current
+; 	rts
+
+; @pingpong2:
+; 	lda #$F0
+; 	sta sprite1+anim_sens			; on passe en mode normal
+
+; 	lda sprite1+anim_boucle			; Doit on boucler
+; 	bne @dec_frame					; si oui, on redemarre l'anim
+
+; 	lda #$00						; Sinon
+; 	sta sprite1+anim_pingpong		; On annule le mode pingpong
+; 	jmp @dec_frame
+
+; ;
+; ; Animation sens negatif
+; ;
+; @negatif:
+; 	lda sprite1+anim_frame_current	; On charge la frame actuelle
+; 	eor sprite1+anim_frame_start
+; 	bne @dec_frame					; sinon on va en dec_frame
+
+; 	lda sprite1+anim_pingpong		; mode ping-pong
+; 	bne @pingpong1					; si oui on va en pingpong
+
+; 	lda sprite1+anim_boucle			; Doit on boucler
+; 	bne @boucle_negatif				; si oui, on redemarre l'anim
+; 	jmp @end_of_anim
+
+; @boucle_negatif:
+; 	lda sprite1+anim_frame_stop
+; 	sta sprite1+anim_frame_current
+; 	rts
+
+; @dec_frame:
+; 	dec sprite1+anim_frame_current
+; 	rts
+
+; @pingpong1:
+; 	lda #$0F
+; 	sta sprite1+anim_sens			; on passe en mode reverse
+
+; 	lda sprite1+anim_boucle			; Doit on boucler
+; 	bne @inc_frame					; si oui, on redemarre l'anim
+
+; 	lda #$00						; Sinon
+; 	sta sprite1+anim_pingpong		; On annule le mode pingpong
+; 	jmp @inc_frame
+
+; ;
+; ; Fin Animation
+; ;
+; @decrease_delay:
+; 	dec sprite1+anim_delay_count	; decrease delay
+; 	rts
+; @end_of_anim:
+; 	lda #$00
+; ;	sta sprite1+sprt_go_to_idle
+; 	sta sprite1+anim_running		; on stoppe l'anim
+; 	rts
+
 spriteAnim:
-	lda sprite1+sprt_anim_state
+	lda sprite1+anim_running
 	bne :+							; si animation not running on sort
 	rts
 
@@ -193,46 +301,15 @@ spriteAnim:
 	lda sprite1+anim_delay			; load anim delay
 	sta sprite1+anim_delay_count	; restart counter delay
 
-	lda sprite1+anim_sens
-	bne @reverse
+	lda sprite1+anim_frame_stop
+	sec
+	sbc sprite1+anim_frame_current
+	bmi @negatif
 ;
-; Animation normale
+; Animation sens positif
 ;
-	lda sprite1+anim_frame_act		; On charge la frame actuelle
-	eor sprite1+anim_frame_stop
-	bne @dec_frame					; sinon on va en dec_frame
-
-	lda sprite1+anim_pingpong		; mode ping-pong
-	bne @pingpong1					; si oui on va en pingpong
-
-	lda sprite1+anim_boucle			; Doit on boucler
-	bne @boucle_norm				; si oui, on redemarre l'anim
-	jmp @end_of_anim
-
-@boucle_norm:
-	lda sprite1+anim_frame_last
-	sta sprite1+anim_frame_act
-	rts
-
-@dec_frame:
-	dec sprite1+anim_frame_act
-	rts
-
-@pingpong1:
-	lda #$01
-	sta sprite1+anim_sens			; on passe en mode reverse
-
-	lda sprite1+anim_boucle			; Doit on boucler
-	bne @inc_frame					; si oui, on redemarre l'anim
-
-	lda #$00						; Sinon
-	sta sprite1+anim_pingpong		; On annule le mode pingpong
-	jmp @inc_frame
-;
-; Animation inverse
-;
-@reverse:
-	lda sprite1+anim_frame_act		; On charge la frame actuelle
+@positif:
+	lda sprite1+anim_frame_current	; On charge la frame actuelle
 	eor sprite1+anim_frame_stop		; on compare avec la last frame
 	bne @inc_frame					; si non egal on va incrementer la frame
 
@@ -240,20 +317,20 @@ spriteAnim:
 	bne @pingpong2					; si oui on va en pingpong
 
 	lda sprite1+anim_boucle			; Doit on boucler
-	bne @boucle_rev					; si oui, on redemarre l'anim
+	bne @boucle_positif				; si oui, on redemarre l'anim
 	jmp @end_of_anim
 
-@boucle_rev:
-	lda #$00
-	sta sprite1+anim_frame_act
+@boucle_positif:
+	lda sprite1+anim_frame_start
+	sta sprite1+anim_frame_current
 	rts
 
 @inc_frame:
-	inc sprite1+anim_frame_act
+	inc sprite1+anim_frame_current
 	rts
 
 @pingpong2:
-	lda #$00
+	lda #$F0
 	sta sprite1+anim_sens			; on passe en mode normal
 
 	lda sprite1+anim_boucle			; Doit on boucler
@@ -262,6 +339,42 @@ spriteAnim:
 	lda #$00						; Sinon
 	sta sprite1+anim_pingpong		; On annule le mode pingpong
 	jmp @dec_frame
+
+;
+; Animation sens negatif
+;
+@negatif:
+	lda sprite1+anim_frame_current	; On charge la frame actuelle
+	eor sprite1+anim_frame_start
+	bne @dec_frame					; sinon on va en dec_frame
+
+	lda sprite1+anim_pingpong		; mode ping-pong
+	bne @pingpong1					; si oui on va en pingpong
+
+	lda sprite1+anim_boucle			; Doit on boucler
+	bne @boucle_negatif				; si oui, on redemarre l'anim
+	jmp @end_of_anim
+
+@boucle_negatif:
+	lda sprite1+anim_frame_stop
+	sta sprite1+anim_frame_current
+	rts
+
+@dec_frame:
+	dec sprite1+anim_frame_current
+	rts
+
+@pingpong1:
+	lda #$0F
+	sta sprite1+anim_sens			; on passe en mode reverse
+
+	lda sprite1+anim_boucle			; Doit on boucler
+	bne @inc_frame					; si oui, on redemarre l'anim
+
+	lda #$00						; Sinon
+	sta sprite1+anim_pingpong		; On annule le mode pingpong
+	jmp @inc_frame
+
 ;
 ; Fin Animation
 ;
@@ -270,8 +383,8 @@ spriteAnim:
 	rts
 @end_of_anim:
 	lda #$00
-	sta sprite1+sprt_go_to_idle
-	sta sprite1+sprt_anim_state		; on stoppe l'anim
+;	sta sprite1+sprt_go_to_idle
+	sta sprite1+anim_running		; on stoppe l'anim
 	rts
 
 ;===============================================================================
@@ -282,38 +395,36 @@ anim_manager:
 	jeq goto_idle
 
 abscisse:
-	lda sprite1+sprt_velocityX
-	jeq ordonnee
-	bmi go_left
-; go_right
-	LIBSPRITE_SET_ANIM sprite1, rotate
-	LIBSPRITE_START_ANIM sprite1, $0F, $01
-	lda #$01
-	sta sprite1+sprt_velocityX
-	jmp ordonnee
-go_left:
-	LIBSPRITE_SET_ANIM sprite1, rotate
-	LIBSPRITE_START_ANIM sprite1, $00, $00
-	lda #$F1
-	sta sprite1+sprt_velocityX
+; 	lda sprite1+sprt_velocityX
+; 	jeq ordonnee
+; 	bmi go_left
+; ; go_right
+; 	LIBSPRITE_SET_ANIM sprite1, $00, $08
+; 	lda #$01
+; 	sta sprite1+sprt_velocityX
+; 	jmp ordonnee
+; go_left:
+; 	LIBSPRITE_SET_ANIM sprite1, $09, $11
+; 	lda #$F1
+; 	sta sprite1+sprt_velocityX
 
 ordonnee:
 	lda sprite1+sprt_velocityY
 	beq goto_idle
 	bmi go_up
 ; go_down
-	LIBSPRITE_START_ANIM sprite1, $08, $01
+	LIBSPRITE_PLAY_ANIM sprite1, $04, $08, $0F
 	lda #$01
 	sta sprite1+sprt_velocityY
 	jmp end_manager
 go_up:
-	LIBSPRITE_START_ANIM sprite1, $00, $00
+	LIBSPRITE_PLAY_ANIM sprite1, $00, $04, $F0
 	lda #$F1
 	sta sprite1+sprt_velocityY
 	jmp end_manager
 
 goto_idle:
-	LIBSPRITE_GO_TO_IDLE sprite1, $04
+	; LIBSPRITE_CHANGE_DIRECTION sprite1
 end_manager:
 	LIBSPRITE_MOVE 0, sprite1
 	lda #$00
