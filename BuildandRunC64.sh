@@ -4,8 +4,8 @@ VC64=/Users/jules/Desktop/EMU/C64/VirtualC64.app/Contents/MacOS/VirtualC64
 OUTPUT=Game
 INPUT=main
 
-if [ -f "build/$OUTPUT.prg" ]; then
-    echo "Deleting $OUTPUT.prg"
+if [ -f "build/$OUTPUT.nprg" ]; then
+    echo "Dxeleting $OUTPUT.prg"
     rm -fr "build/$OUTPUT.prg"
 fi
 
@@ -18,5 +18,5 @@ fi
 
 # if [ -f "build/$OUTPUT.prg" ]; then
 #     echo "Launching $OUTPUT.prg"
-#     $VC64 build/$OUTPUT.prg &
+#     VC64 build/$OUTPUT.prg &
 # fi
