@@ -222,6 +222,25 @@ key_exit:
 	lda #$00
 	sta $d015        ; turn off all sprites
 	jmp $ea81        ; jmp to regular interrupt routine
-	brk
-end_kbd:
 	rts
+
+cia:
+	sei         ; set interrupt disable flag
+
+	ldx #$00
+	stx	BORDER_COL
+	stx SCREEN_COL
+	LIBTEXT_CLEARSCREEN_V $01     ; clear the screen
+
+	ldy #$01
+
+	ldx #$00
+	stx $DC02 ; PRA en Lecture
+	ldx #$FF
+	stx $DC03 ; PRB en ecriture
+
+	tya
+	and $DC00
+	bne UN	; on affiche 1
+	sta $0400, Y
+	
