@@ -26,18 +26,15 @@ sprite1:				; $13 bytes
 .byte $00, $00			; Velocity X, velocity Y
 .byte $01				; Priority ($00 priority sprite / $FF prority background)
 .byte Red				; Uniq color (foreground)
-.byte $00				; anim runnning
-; .byte $00				; Transition (ininterruptible)
-.byte $00, $04, $08		; Start Frame / Current frame / Stop frame
+.byte $00				; anim locked
+.byte $04, $08			; Current frame / Stop frame
 .byte $00, $05			; Current delay count / Animation delay
-.byte $00				; Type d'anim: normal/ping-pong
-.byte $00				; sens $F0 = negatif / $0F = positif
-.byte $00				; boucle
+.byte $00, $00			; Next anim / next stop frame
 .byte $00				; Adresse VIC de l'annimation
 
-right		= $80 ; $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
-; left		= ($2000 + 579) / $40 ; frameset location VIC (Adresse du bank / 64)
-; rotate		= ($2000 + 1158) / $40
+ship_right		= $80 ; $2000 / $40 ; frameset location VIC (Adresse du bank / 64)
+ship_left		= ($2000 + 579) / $40 ; frameset location VIC (Adresse du bank / 64)
+ship_rotate		= ($2000 + 1158) / $40
 ;===============================================================================
 .segment "CODE"
 	jmp start						; run the init code then flow into the update code
@@ -132,6 +129,13 @@ end:
 ;============================================================
 
 start:
+LDX #$0F
+loop:
+STX $d020
+STX $d021
+DEX
+BNE loop
+jmp start
 	;====================
 	; Initialize Memory
 	;====================
